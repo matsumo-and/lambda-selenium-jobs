@@ -4,8 +4,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import chromedriver_binary
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.remote.webelement import WebElement
 
 # 待機時間
 WAIT_SEC = 10
@@ -14,36 +13,38 @@ WAIT_SEC = 10
 INITIAL_URL = "https://reserve.bluenote.co.jp/reserve/schedule/move/202402/"
 
 # 押下するリンク
-LINK_PATH = "/reserve/schedule/exec/3493"
+LINK_PATH = "https://reserve.bluenote.co.jp/reserve/schedule/exec/3493"
 
 # リダイレクト先のURL
 LINK_REDIRECT_URL = "https://reserve.bluenote.co.jp/reserve/plan"
 
 # 確認用のCSSクラス
 CONFIRM_CLASS_NAME = "times"
-CONFIRM_CSS_PROPERTY = "background-color"
-CONFIRM_CORRECT_COLOR = "#f4f1ea"
-CONFIRM_INCORRECT_COLOR = "#eeeeee"
+CONFIRM_CSS_PROPERTY = "background-image"
+CONFIRM_STR = "sellout"
 
 ## Lambdaから呼び出される ##
 def lambda_handler(event, context):
 
-    # Chromeオプションの設定
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--no-sandbox')
+    options = webdriver.ChromeOptions()
+    # headless-chromiumのパスを指定
+    options.binary_location = "/opt/headless/headless-chromium"
+    options.add_argument("--headless")
+    options.add_argument('--single-process')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument("--no-sandbox")
 
-    # WebDriverの設定
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(
+        # chromedriverのパスを指定
+        executable_path="/opt/headless/chromedriver",
+        options=options
+    )
+
     driver.get(INITIAL_URL)
 
     try:
         # 2. リンクを開く
-        link_element = WebDriverWait(driver, WAIT_SEC).until(
-            EC.presence_of_element_located((By.XPATH, '//a[@href="{}"]'.format(LINK_PATH)))
-        )
-        link_element.click()
+        driver.get(LINK_PATH)
 
         # 3. URLが正しいか確認
         WebDriverWait(driver, WAIT_SEC).until(
@@ -57,10 +58,18 @@ def lambda_handler(event, context):
 
         # 4. 特定のDivタグのCSS取得
         div_elements = driver.find_elements(By.CLASS_NAME, CONFIRM_CLASS_NAME)
+        
         for div_element in div_elements:
-            css_property = div_element.value_of_css_property(CONFIRM_CSS_PROPERTY)
-            if css_property.lower() in [CONFIRM_INCORRECT_COLOR, CONFIRM_CORRECT_COLOR]:
-                print(f"Div with class 'times' has the correct background color: {css_property}")
+            
+            # WebElementを復元
+            element_id = div_element.get("ELEMENT")
+            web_element = WebElement(driver, element_id)
+    
+            # CSSプロパティを取得
+            background_image_path = web_element.value_of_css_property("background-image")
+
+            if background_image_path is not None and CONFIRM_STR in background_image_path:
+                print(f"Div with class 'times' has the correct background image: {background_image_path}")
 
     finally:
         # ブラウザを閉じる
