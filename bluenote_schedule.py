@@ -70,7 +70,7 @@ def lambda_handler(event, context):
             # CSSプロパティを取得
             background_image_path = web_element.value_of_css_property("background-image")
 
-            if background_image_path is not None and CONFIRM_STR not in background_image_path:
+            if background_image_path is not None and background_image_path != "none" and CONFIRM_STR not in background_image_path:
                 print(f"Div with class 'times' has the correct background image: {background_image_path}")
                 send_flag = True
 
