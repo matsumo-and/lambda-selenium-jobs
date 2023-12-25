@@ -5,6 +5,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
+import boto3
 
 # 待機時間
 WAIT_SEC = 10
@@ -58,7 +59,8 @@ def lambda_handler(event, context):
 
         # 4. 特定のDivタグのCSS取得
         div_elements = driver.find_elements(By.CLASS_NAME, CONFIRM_CLASS_NAME)
-        
+
+        send_flag = False
         for div_element in div_elements:
             
             # WebElementを復元
@@ -68,12 +70,37 @@ def lambda_handler(event, context):
             # CSSプロパティを取得
             background_image_path = web_element.value_of_css_property("background-image")
 
-            if background_image_path is not None and CONFIRM_STR in background_image_path:
+            if background_image_path is not None and CONFIRM_STR not in background_image_path:
                 print(f"Div with class 'times' has the correct background image: {background_image_path}")
+                send_flag = True
+
+        # 1件でも予約可能であれば通知
+        if send_flag:
+            send_to_sns()
 
     finally:
         # ブラウザを閉じる
         driver.quit()
+
+
+## SNSで通知する ##
+def send_to_sns():
+    
+    #ARNの設定
+    sns_arn = "arn:aws:sns:ap-northeast-1:000000000:selenium-topic" # sample arn
+
+    #SNS Clientの作成
+    sns_agent = boto3.client('sns')
+    
+    # 通知メッセージ
+    message = "Yussef Dayesのコンサートに空きが出ています"
+
+    # SNSにメッセージを発行
+    sns_agent.publish(
+        TopicArn=sns_arn,
+        Message=message,
+        Subject="キャンセル待ちが発生しています"
+    )
 
 # ローカル実行用
 if __name__ == "__main__":
