@@ -35,7 +35,7 @@ def lambda_handler(event, context):
     chrome_options.add_argument('--no-sandbox')
 
     # WebDriverの設定
-    driver = webdriver.Chrome(ChromeDriverManager().install(), options=chrome_options)
+    driver = webdriver.Chrome(options=chrome_options)
     driver.get(INITIAL_URL)
 
     try:
