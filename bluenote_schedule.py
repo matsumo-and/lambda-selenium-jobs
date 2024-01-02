@@ -6,6 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
 import boto3
+import os
 
 # 待機時間
 WAIT_SEC = 10
@@ -25,7 +26,7 @@ CONFIRM_CSS_PROPERTY = "background-image"
 CONFIRM_STR = "sellout"
 
 # SNS Arn
-SNS_ARN = process.env.SNS_ARN
+SNS_ARN = os.environ.get('SNS_ARN')
 
 ## Lambdaから呼び出される ##
 def lambda_handler(event, context):
