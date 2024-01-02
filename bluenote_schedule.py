@@ -9,7 +9,7 @@ import boto3
 import os
 
 # 待機時間
-WAIT_SEC = 10
+WAIT_SEC = 5
 
 # 初期URL
 INITIAL_URL = "https://reserve.bluenote.co.jp/reserve/schedule/move/202402/"
@@ -65,7 +65,11 @@ def lambda_handler(event, context):
         div_elements = driver.find_elements(By.CLASS_NAME, CONFIRM_CLASS_NAME)
 
         send_flag = False
-        for div_element in div_elements:
+        days_count = 0
+        seat_count = 0
+        for i in range(len(div_elements) - 1):
+            
+            div_element = div_elements[i]
             
             # WebElementを復元
             element_id = div_element.get("ELEMENT")
@@ -76,11 +80,34 @@ def lambda_handler(event, context):
 
             if background_image_path is not None and background_image_path != "none" and CONFIRM_STR not in background_image_path:
                 print(f"Div with class 'times' has the correct background image: {background_image_path}")
-                send_flag = True
+                days_count += 1
+
+                # 日程が空いているので詳細な席数をしらべる
+                # 該当日にちをクリック
+                web_element.click()
+                # 待機する
+                WebDriverWait(driver, WAIT_SEC).until(
+                    EC.url_to_be("https://reserve.bluenote.co.jp/reserve/plan/change/")
+                )
+                
+                # クリック後再度復元
+                div_elements = driver.find_elements(By.CLASS_NAME, CONFIRM_CLASS_NAME)
+                div_element = div_elements[i]
+                
+                # 席数を確認
+                try:
+                    seats = driver.find_elements_by_xpath('//div[contains(@class, "active") and contains(@id, "seatingArea_")]')
+                    
+                    if seats is not None and len(seats) != 0:
+                        send_flag = True
+                        seat_count += len(seats)
+                except:
+                    print("空きがありません")
 
         # 1件でも予約可能であれば通知
         if send_flag:
-            send_to_sns()
+            message = f"Yussef Dayesのコンサートに{days_count}日程で{seat_count}シートの空きが出ています"
+            send_to_sns(message)
 
     finally:
         # ブラウザを閉じる
@@ -88,13 +115,10 @@ def lambda_handler(event, context):
 
 
 ## SNSで通知する ##
-def send_to_sns():
+def send_to_sns(message):
 
     #SNS Clientの作成
     sns_agent = boto3.client('sns')
-    
-    # 通知メッセージ
-    message = "Yussef Dayesのコンサートに空きが出ています"
 
     # SNSにメッセージを発行
     sns_agent.publish(
