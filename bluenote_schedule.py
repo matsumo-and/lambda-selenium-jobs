@@ -24,6 +24,9 @@ CONFIRM_CLASS_NAME = "times"
 CONFIRM_CSS_PROPERTY = "background-image"
 CONFIRM_STR = "sellout"
 
+# SNS Arn
+SNS_ARN = process.env.SNS_ARN
+
 ## Lambdaから呼び出される ##
 def lambda_handler(event, context):
 
@@ -85,9 +88,6 @@ def lambda_handler(event, context):
 
 ## SNSで通知する ##
 def send_to_sns():
-    
-    #ARNの設定
-    sns_arn = "arn:aws:sns:ap-northeast-1:000000000:selenium-topic" # sample arn
 
     #SNS Clientの作成
     sns_agent = boto3.client('sns')
@@ -97,7 +97,7 @@ def send_to_sns():
 
     # SNSにメッセージを発行
     sns_agent.publish(
-        TopicArn=sns_arn,
+        TopicArn=SNS_ARN,
         Message=message,
         Subject="キャンセル待ちが発生しています"
     )
